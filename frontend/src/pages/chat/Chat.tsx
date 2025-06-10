@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
 import { CommandBarButton, IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
-import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from '@fluentui/react-icons'
+import { SquareRegular, ShieldLockRegular, ErrorCircleRegular, SpeakerMute24Regular, Speaker124Regular } from '@fluentui/react-icons'
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -45,6 +45,538 @@ const enum messageStatus {
   Done = 'Done'
 }
 
+// Enhanced Animated Avatar Component with Voice
+const AnimatedAvatar: React.FC<{ isAnimating: boolean; isSpeaking: boolean }> = ({ isAnimating, isSpeaking }) => {
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const mouthRef = useRef<HTMLDivElement>(null);
+  const leftEyeRef = useRef<HTMLDivElement>(null);
+  const rightEyeRef = useRef<HTMLDivElement>(null);
+  const soundWavesRef = useRef<HTMLDivElement>(null);
+  
+  const animationFrameRef = useRef<number>();
+  const eyeAnimationFrameRef = useRef<number>();
+  const lastBlinkRef = useRef<number>(0);
+  const blinkingRef = useRef<boolean>(false);
+
+  const animateMouth = () => {
+    if ((!isAnimating && !isSpeaking) || !mouthRef.current) return;
+    
+    // More dynamic mouth animation when speaking
+    const minH = isSpeaking ? 8 : 12;
+    const maxH = isSpeaking ? 45 : 38;
+    const minW = isSpeaking ? 35 : 40;
+    const maxW = isSpeaking ? 70 : 60;
+    const speed = isSpeaking ? 60 : 80;
+    const randomSpeed = isSpeaking ? 80 : 120;
+    
+    const h = Math.floor(Math.random() * (maxH - minH)) + minH;
+    const w = Math.floor(Math.random() * (maxW - minW)) + minW;
+    const opacity = isSpeaking ? 0.7 + Math.random() * 0.2 : 0.6 + Math.random() * 0.3;
+    
+    mouthRef.current.style.height = h + 'px';
+    mouthRef.current.style.width = w + 'px';
+    mouthRef.current.style.background = `rgba(210,105,30,${opacity})`;
+    
+    animationFrameRef.current = requestAnimationFrame(() => {
+      setTimeout(() => animateMouth(), speed + Math.random() * randomSpeed);
+    });
+  };
+
+  const animateEyes = () => {
+    if ((!isAnimating && !isSpeaking) || !leftEyeRef.current || !rightEyeRef.current) return;
+    
+    const now = Date.now();
+    const blinkInterval = isSpeaking ? 1500 + Math.random() * 2000 : 2000 + Math.random() * 3000;
+    
+    if (!blinkingRef.current && now - lastBlinkRef.current > blinkInterval) {
+      blinkingRef.current = true;
+      leftEyeRef.current.style.height = '6px';
+      rightEyeRef.current.style.height = '6px';
+      
+      setTimeout(() => {
+        if (leftEyeRef.current && rightEyeRef.current) {
+          leftEyeRef.current.style.height = '36px';
+          rightEyeRef.current.style.height = '36px';
+          blinkingRef.current = false;
+          lastBlinkRef.current = Date.now();
+        }
+      }, 120);
+    }
+    
+    eyeAnimationFrameRef.current = requestAnimationFrame(() => animateEyes());
+  };
+
+  useEffect(() => {
+    if (isAnimating || isSpeaking) {
+      if (avatarRef.current) {
+        avatarRef.current.classList.add(styles.speaking || 'speaking');
+      }
+      if (soundWavesRef.current) {
+        soundWavesRef.current.classList.add('active');
+      }
+      animateMouth();
+      animateEyes();
+    } else {
+      if (avatarRef.current) {
+        avatarRef.current.classList.remove(styles.speaking || 'speaking');
+      }
+      if (soundWavesRef.current) {
+        soundWavesRef.current.classList.remove('active');
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (eyeAnimationFrameRef.current) {
+        cancelAnimationFrame(eyeAnimationFrameRef.current);
+      }
+      
+      // Reset mouth and eyes
+      if (mouthRef.current) {
+        mouthRef.current.style.height = '22px';
+        mouthRef.current.style.width = '50px';
+        mouthRef.current.style.background = 'rgba(210,105,30,0.7)';
+      }
+      if (leftEyeRef.current && rightEyeRef.current) {
+        leftEyeRef.current.style.height = '36px';
+        rightEyeRef.current.style.height = '36px';
+      }
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (eyeAnimationFrameRef.current) {
+        cancelAnimationFrame(eyeAnimationFrameRef.current);
+      }
+    };
+  }, [isAnimating, isSpeaking]);
+
+  return (
+    <div style={{ 
+      position: 'relative', 
+      width: '120px', 
+      height: '120px', 
+      margin: '10px auto',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <style>
+        {`
+          .avatar-container {
+            position: relative;
+          }
+          
+          .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ffdbac, #f1c27d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+          }
+          
+          .avatar.speaking {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+          }
+          
+          .sound-waves {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            pointer-events: none;
+          }
+          
+          .sound-waves.active {
+            display: block;
+          }
+          
+          .wave {
+            width: 140px;
+            height: 140px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            position: absolute;
+            animation: wave 1.5s infinite;
+          }
+          
+          .wave:nth-child(2) {
+            animation-delay: 0.5s;
+          }
+          
+          .wave:nth-child(3) {
+            animation-delay: 1s;
+          }
+          
+          @keyframes wave {
+            0% {
+              transform: scale(0.8);
+              opacity: 1;
+            }
+            100% {
+              transform: scale(1.8);
+              opacity: 0;
+            }
+          }
+        `}
+      </style>
+      
+      <div ref={soundWavesRef} className="sound-waves">
+        <div className="wave"></div>
+        <div className="wave"></div>
+        <div className="wave"></div>
+      </div>
+      
+      <div ref={avatarRef} className="avatar">
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            position: 'relative',
+            width: '85px',
+            height: '95px',
+            background: '#ffe0b2',
+            borderRadius: '80% 80% 80% 80%/90% 90% 100% 100%',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+            zIndex: 2
+          }}>
+            {/* Hair */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '35px',
+              background: 'linear-gradient(90deg,#3e2723 60%,#6d4c41 100%)',
+              borderRadius: '45px 45px 30px 30px/40px 40px 30px 30px',
+              zIndex: 3
+            }}></div>
+            
+            {/* Eyebrows */}
+            <div style={{
+              position: 'absolute',
+              left: '16px',
+              top: '27px',
+              width: '19px',
+              height: '5px',
+              background: '#6d4c41',
+              borderRadius: '10px',
+              transform: 'rotate(-8deg)'
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              right: '16px',
+              top: '27px',
+              width: '19px',
+              height: '5px',
+              background: '#6d4c41',
+              borderRadius: '10px',
+              transform: 'rotate(8deg)'
+            }}></div>
+            
+            {/* Eyes */}
+            <div ref={leftEyeRef} style={{
+              position: 'absolute',
+              left: '19px',
+              top: '40px',
+              width: '18px',
+              height: '18px',
+              background: '#fff',
+              borderRadius: '50%',
+              border: '1px solid #333',
+              overflow: 'hidden',
+              zIndex: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'height 0.1s ease'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                background: '#333',
+                borderRadius: '50%',
+                marginLeft: '3px'
+              }}></div>
+            </div>
+            
+            <div ref={rightEyeRef} style={{
+              position: 'absolute',
+              right: '19px',
+              top: '40px',
+              width: '18px',
+              height: '18px',
+              background: '#fff',
+              borderRadius: '50%',
+              border: '1px solid #333',
+              overflow: 'hidden',
+              zIndex: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'height 0.1s ease'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                background: '#333',
+                borderRadius: '50%',
+                marginRight: '3px'
+              }}></div>
+            </div>
+            
+            {/* Nose */}
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              top: '60px',
+              width: '9px',
+              height: '14px',
+              background: '#f1c27d',
+              borderRadius: '50% 50% 60% 60%/60% 60% 100% 100%',
+              transform: 'translateX(-50%)'
+            }}></div>
+            
+            {/* Cheeks */}
+            <div style={{
+              position: 'absolute',
+              left: '9px',
+              top: '64px',
+              width: '11px',
+              height: '7px',
+              background: '#ffb6b6',
+              borderRadius: '50%',
+              opacity: 0.5
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              right: '9px',
+              top: '64px',
+              width: '11px',
+              height: '7px',
+              background: '#ffb6b6',
+              borderRadius: '50%',
+              opacity: 0.5
+            }}></div>
+            
+            {/* Mouth */}
+            <div ref={mouthRef} style={{
+              position: 'absolute',
+              left: '50%',
+              top: '79px',
+              width: '25px',
+              height: '11px',
+              transform: 'translateX(-50%)',
+              background: 'rgba(210,105,30,0.7)',
+              borderRadius: '0 0 25px 25px',
+              transition: 'all 0.1s ease',
+              zIndex: 5
+            }}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Voice Reading Hook
+const useVoiceReading = () => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const synthesisRef = useRef<SpeechSynthesis | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      synthesisRef.current = window.speechSynthesis;
+      
+      const loadVoices = () => {
+        const voices = synthesisRef.current?.getVoices() || [];
+        console.log('Voices loaded:', voices.length);
+        setAvailableVoices(voices);
+        setVoicesLoaded(voices.length > 0);
+      };
+
+      // Load voices immediately
+      loadVoices();
+      
+      // Also listen for voiceschanged event
+      if (synthesisRef.current) {
+        synthesisRef.current.addEventListener('voiceschanged', loadVoices);
+      }
+    } else {
+      console.error('Speech synthesis not supported');
+    }
+
+    return () => {
+      if (utteranceRef.current && synthesisRef.current) {
+        synthesisRef.current.cancel();
+      }
+    };
+  }, []);
+
+  const stopSpeaking = () => {
+    if (synthesisRef.current) {
+      synthesisRef.current.cancel();
+      setIsSpeaking(false);
+      utteranceRef.current = null;
+      console.log('Speech stopped');
+    }
+  };
+
+  const speakText = (text: string) => {
+    console.log('speakText called:', { text: text.substring(0, 50), isVoiceEnabled, voicesLoaded });
+    
+    if (!synthesisRef.current || !isVoiceEnabled || !text) {
+      console.log('Speech conditions not met');
+      return;
+    }
+
+    // Stop any current speech
+    stopSpeaking();
+
+    // Clean the text exactly like the working example
+    const cleanText = text
+      .replace(/\[.*?\]\(.*?\)/g, '') // Remove markdown links
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic markdown
+      .replace(/`(.*?)`/g, '$1') // Remove code markdown
+      .replace(/#{1,6}\s/g, '') // Remove headers
+      .replace(/^\s*[-*+]\s/gm, '') // Remove bullet points
+      .replace(/^\s*\d+\.\s/gm, '') // Remove numbered lists
+      .replace(/\n+/g, ' ') // Replace newlines with spaces
+      .replace(/\s+/g, ' ') // Replace multiple spaces
+      .trim();
+
+    if (!cleanText || cleanText.length < 2) {
+      console.log('Text too short after cleaning');
+      return;
+    }
+
+    console.log('Creating utterance for:', cleanText.substring(0, 50));
+
+    try {
+      utteranceRef.current = new SpeechSynthesisUtterance(cleanText);
+      
+      // Find and set a good voice (same logic as working example)
+      const voices = availableVoices;
+      if (voices.length > 0) {
+        // Try to find a good English voice
+        let selectedVoice = voices.find(voice => voice.lang.startsWith('en-US')) ||
+                           voices.find(voice => voice.lang.startsWith('en')) ||
+                           voices[0];
+        
+        if (selectedVoice) {
+          utteranceRef.current.voice = selectedVoice;
+          console.log('Selected voice:', selectedVoice.name);
+        }
+      }
+
+      // Set parameters like the working example
+      utteranceRef.current.rate = 1.0;
+      utteranceRef.current.pitch = 1.0;
+      utteranceRef.current.volume = 1.0;
+
+      // Event listeners exactly like working example
+      utteranceRef.current.onstart = () => {
+        console.log('Speech started');
+        setIsSpeaking(true);
+      };
+
+      utteranceRef.current.onend = () => {
+        console.log('Speech ended');
+        setIsSpeaking(false);
+        utteranceRef.current = null;
+      };
+
+      utteranceRef.current.onerror = (event) => {
+        console.error('Speech error:', event.error);
+        setIsSpeaking(false);
+        utteranceRef.current = null;
+      };
+
+      utteranceRef.current.onpause = () => {
+        console.log('Speech paused');
+        setIsSpeaking(false);
+      };
+
+      utteranceRef.current.onresume = () => {
+        console.log('Speech resumed');
+        setIsSpeaking(true);
+      };
+
+      // Speak the utterance
+      console.log('Starting speech...');
+      synthesisRef.current.speak(utteranceRef.current);
+
+    } catch (error) {
+      console.error('Error creating speech:', error);
+      setIsSpeaking(false);
+    }
+  };
+
+  const toggleVoice = () => {
+    const newState = !isVoiceEnabled;
+    console.log('Toggling voice:', newState);
+    
+    if (isVoiceEnabled && isSpeaking) {
+      stopSpeaking();
+    }
+    
+    setIsVoiceEnabled(newState);
+    
+    // Test speech when enabling (like the working example)
+    if (newState && synthesisRef.current && voicesLoaded) {
+      setTimeout(() => {
+        console.log('Testing voice...');
+        const testUtterance = new SpeechSynthesisUtterance('Voice enabled');
+        testUtterance.volume = 0.7;
+        testUtterance.rate = 1.0;
+        
+        // Set voice for test
+        if (availableVoices.length > 0) {
+          const testVoice = availableVoices.find(v => v.lang.startsWith('en')) || availableVoices[0];
+          if (testVoice) {
+            testUtterance.voice = testVoice;
+          }
+        }
+        
+        synthesisRef.current?.speak(testUtterance);
+      }, 100);
+    }
+  };
+
+  return {
+    isSpeaking,
+    isVoiceEnabled,
+    voicesLoaded,
+    availableVoices,
+    speakText,
+    stopSpeaking,
+    toggleVoice
+  };
+};
+
 const Chat = () => {
   const appStateContext = useContext(AppStateContext)
   const ui = appStateContext?.state.frontendSettings?.ui
@@ -65,6 +597,10 @@ const Chat = () => {
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
   const [logo, setLogo] = useState('')
   const [answerId, setAnswerId] = useState<string>('')
+
+  // Voice reading functionality
+  const { isSpeaking, isVoiceEnabled, voicesLoaded, availableVoices, speakText, stopSpeaking, toggleVoice } = useVoiceReading();
+  const lastProcessedMessageRef = useRef<string>('');
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -98,6 +634,30 @@ const Chat = () => {
       toggleErrorDialog()
     }
   }, [appStateContext?.state.isCosmosDBAvailable])
+
+  // Effect to read new assistant messages - simplified like the working example
+  useEffect(() => {
+    if (!isVoiceEnabled || !voicesLoaded || messages.length === 0 || isLoading) {
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    
+    if (
+      lastMessage.role === ASSISTANT && 
+      typeof lastMessage.content === 'string' && 
+      lastMessage.content.trim().length > 0 &&
+      lastMessage.id !== lastProcessedMessageRef.current
+    ) {
+      console.log('New assistant message detected, will speak:', lastMessage.id);
+      lastProcessedMessageRef.current = lastMessage.id;
+      
+      // Use a longer delay to ensure message is fully rendered
+      setTimeout(() => {
+        speakText(lastMessage.content as string);
+      }, 1000);
+    }
+  }, [messages, isVoiceEnabled, voicesLoaded, isLoading, speakText]);
 
   const handleErrorDialogClose = () => {
     toggleErrorDialog()
@@ -182,6 +742,8 @@ const Chat = () => {
   const makeApiRequestWithoutCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
     setIsLoading(true)
     setShowLoadingMessage(true)
+    if (isSpeaking) stopSpeaking(); // Stop any ongoing speech
+    
     const abortController = new AbortController()
     abortFuncs.current.unshift(abortController)
 
@@ -309,6 +871,8 @@ const Chat = () => {
   const makeApiRequestWithCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
     setIsLoading(true)
     setShowLoadingMessage(true)
+    if (isSpeaking) stopSpeaking(); // Stop any ongoing speech
+    
     const abortController = new AbortController()
     abortFuncs.current.unshift(abortController)
     const questionContent = typeof question === 'string' ? question : [{ type: "text", text: question[0].text }, { type: "image_url", image_url: { url: question[1].image_url.url } }]
@@ -536,6 +1100,8 @@ const Chat = () => {
 
   const clearChat = async () => {
     setClearingChat(true)
+    if (isSpeaking) stopSpeaking(); // Stop any ongoing speech
+    
     if (appStateContext?.state.currentChat?.id && appStateContext?.state.isCosmosDBAvailable.cosmosDB) {
       let response = await historyClear(appStateContext?.state.currentChat.id)
       if (!response.ok) {
@@ -580,7 +1146,7 @@ const Chat = () => {
         // Returning the prettified error message
         if (reason !== '') {
           return (
-            'The prompt was filtered due to triggering Azure OpenAI’s content filtering system.\n' +
+            'The prompt was filtered due to triggering Azure OpenAI\'s content filtering system.\n' +
             'Reason: This prompt contains content flagged as ' +
             reason +
             '\n\n' +
@@ -622,12 +1188,14 @@ const Chat = () => {
     setActiveCitation(undefined)
     appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: null })
     setProcessMessages(messageStatus.Done)
+    if (isSpeaking) stopSpeaking(); // Stop any ongoing speech
   }
 
   const stopGenerating = () => {
     abortFuncs.current.forEach(a => a.abort())
     setShowLoadingMessage(false)
     setIsLoading(false)
+    if (isSpeaking) stopSpeaking(); // Stop any ongoing speech
   }
 
   useEffect(() => {
@@ -742,8 +1310,6 @@ const Chat = () => {
       catch {
         return null;
       }
-      // const execResults = JSON.parse(message.content) as AzureSqlServerExecResults;
-      // return execResults.all_exec_results.at(-1)?.code_exec_result;
     }
     return null;
   }
@@ -792,6 +1358,7 @@ const Chat = () => {
             {!messages || messages.length < 1 ? (
               <Stack className={styles.chatEmptyState}>
                 <img src={logo} className={styles.chatIcon} aria-hidden="true" />
+                <AnimatedAvatar isAnimating={false} isSpeaking={false} />
                 <h1 className={styles.chatEmptyStateTitle}>{ui?.chat_title}</h1>
                 <h2 className={styles.chatEmptyStateSubtitle}>{ui?.chat_description}</h2>
               </Stack>
@@ -807,6 +1374,10 @@ const Chat = () => {
                       </div>
                     ) : answer.role === 'assistant' ? (
                       <div className={styles.chatMessageGpt}>
+                        <AnimatedAvatar 
+                          isAnimating={isLoading && index === messages.length - 1} 
+                          isSpeaking={isSpeaking && index === messages.length - 1}
+                        />
                         {typeof answer.content === "string" && <Answer
                           answer={{
                             answer: answer.content,
@@ -834,6 +1405,7 @@ const Chat = () => {
                 {showLoadingMessage && (
                   <>
                     <div className={styles.chatMessageGpt}>
+                      <AnimatedAvatar isAnimating={true} isSpeaking={false} />
                       <Answer
                         answer={{
                           answer: "Generating answer...",
@@ -867,6 +1439,42 @@ const Chat = () => {
                 </Stack>
               )}
               <Stack>
+                {/* Voice Toggle Button */}
+                <CommandBarButton
+                  role="button"
+                  styles={{
+                    icon: {
+                      color: isVoiceEnabled ? '#FFFFFF' : '#666666'
+                    },
+                    iconDisabled: {
+                      color: '#BDBDBD !important'
+                    },
+                    root: {
+                      color: isVoiceEnabled ? '#FFFFFF' : '#666666',
+                      background: isVoiceEnabled
+                        ? 'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #0F6CBD 33.63%, #2D87C3 70.31%, #8DDDD8 100%)'
+                        : '#F0F0F0',
+                      border: isSpeaking ? '2px solid #00ff00' : 'none'
+                    },
+                    rootDisabled: {
+                      background: '#F0F0F0'
+                    }
+                  }}
+                  className={styles.newChatIcon}
+                  iconProps={{ 
+                    iconName: isVoiceEnabled 
+                      ? (isSpeaking ? 'MicrophoneType' : 'Volume3') 
+                      : 'VolumeDisabled'
+                  }}
+                  onClick={toggleVoice}
+                  disabled={false}
+                  aria-label={isVoiceEnabled ? "Disable voice reading" : "Enable voice reading"}
+                  title={
+                    isVoiceEnabled 
+                      ? (isSpeaking ? "Speaking... (click to disable voice)" : "Voice reading enabled (click to disable)")
+                      : "Voice reading disabled (click to enable)"
+                  }
+                />
                 {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
                   <CommandBarButton
                     role="button"
